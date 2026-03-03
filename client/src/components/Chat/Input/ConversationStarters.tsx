@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { EModelEndpoint, Constants } from 'librechat-data-provider';
 import { useChatContext, useAgentsMapContext, useAssistantsMapContext } from '~/Providers';
-import { useGetAssistantDocsQuery, useGetEndpointsQuery } from '~/data-provider';
+import { useGetAssistantDocsQuery, useGetEndpointsQuery, useGetStartupConfig } from '~/data-provider';
 import { getIconEndpoint, getEntity } from '~/utils';
 import { useSubmitMessage } from '~/hooks';
 
@@ -10,6 +10,7 @@ const ConversationStarters = () => {
   const agentsMap = useAgentsMapContext();
   const assistantMap = useAssistantsMapContext();
   const { data: endpointsConfig } = useGetEndpointsQuery();
+  const { data: startupConfig } = useGetStartupConfig();
 
   const endpointType = useMemo(() => {
     let ep = conversation?.endpoint ?? '';
@@ -40,12 +41,15 @@ const ConversationStarters = () => {
       return entity.conversation_starters;
     }
 
-    if (isAgent) {
-      return [];
+    if (!isAgent && documentsMap.get(entity?.id ?? '')?.conversation_starters?.length) {
+      return documentsMap.get(entity?.id ?? '')?.conversation_starters ?? [];
     }
 
-    return documentsMap.get(entity?.id ?? '')?.conversation_starters ?? [];
-  }, [documentsMap, isAgent, entity]);
+    const activeSpec = startupConfig?.modelSpecs?.list?.find(
+      (spec) => spec.name === conversation?.spec,
+    );
+    return activeSpec?.conversation_starters ?? [];
+  }, [documentsMap, isAgent, entity, startupConfig, conversation?.spec]);
 
   const { submitMessage } = useSubmitMessage();
   const sendConversationStarter = useCallback(
